@@ -36,38 +36,34 @@ build {
     "sudo yum update -y",
     "sudo amazon-linux-extras enable docker",
     "sudo yum install -y docker xfsprogs git",
+    
     # Stop Docker before configuring storage
     "sudo systemctl stop docker || true",
     
     # Force unmount if already mounted
     "sudo umount /var/lib/docker || true",
     
-    # Create XFS volume with explicit pquota option
+    # Create XFS volume without quota options initially
     "sudo fallocate -l 20G /docker.img",
     "sudo mkfs.xfs -n ftype=1 /docker.img",
     "sudo mkdir -p /var/lib/docker",
     
-    # Remove any existing fstab entry
-    "sudo sed -i '/\\/docker.img/d' /etc/fstab",
+    # Mount without quota options first
+    "sudo mount /docker.img /var/lib/docker",
+    "echo '/docker.img /var/lib/docker xfs defaults 0 0' | sudo tee -a /etc/fstab",
     
-    # Add new fstab entry with explicit pquota
-    "echo '/docker.img /var/lib/docker xfs defaults,pquota 0 0' | sudo tee -a /etc/fstab",
-    
-    # Mount directly with explicit options instead of using fstab
-    "sudo mount -o pquota /docker.img /var/lib/docker",
-    
-    # Verify the mount has pquota (not prjquota)
-    "echo 'Verifying mount options:'",
-    "mount | grep docker",
-    
-    # Docker config with overlay2 and size option
+    # Configure Docker without storage options for now
     "sudo mkdir -p /etc/docker",
-    "echo '{\"storage-driver\": \"overlay2\", \"storage-opts\": [\"size=10G\"]}' | sudo tee /etc/docker/daemon.json",
+    "echo '{\"storage-driver\": \"overlay2\"}' | sudo tee /etc/docker/daemon.json",
     
-    # Restart Docker properly
+    # Start Docker
     "sudo systemctl daemon-reload",
     "sudo systemctl enable docker",
-    "sudo systemctl start docker || (echo 'Docker failed to start' && sudo systemctl status docker && exit 1)",
+    "sudo systemctl start docker",
+    
+    # Verify Docker is running
+    "sudo systemctl status docker",
+    "docker info",
     
     # Add ec2-user to docker group
     "sudo usermod -aG docker ec2-user",
@@ -81,8 +77,7 @@ build {
     "echo 'circleci ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/90-circleci",
     "sudo usermod -aG docker circleci",
     
-    # Verify everything works
-    "docker info | grep 'Storage Driver'",
+    # Verify everything installed
     "docker --version",
     "docker-compose version",
     "git --version"
