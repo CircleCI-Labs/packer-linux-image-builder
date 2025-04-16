@@ -2,15 +2,6 @@ variable "region" {
   default = "us-east-1"
 }
 
-packer {
-  required_plugins {
-    amazon = {
-      version = ">= 1.0.0"
-      source  = "github.com/hashicorp/amazon"
-    }
-  }
-}
-
 source "amazon-ebs" "al2" {
   region                  = var.region
   instance_type           = "t3.micro"
