@@ -1,0 +1,16 @@
+version: 2.1
+
+jobs:
+  packer-build:
+    docker:
+      - image: public.ecr.aws/hashicorp/packer:1.12
+    resource_class: large
+    steps:
+      - checkout
+      - run: packer init .
+      - run: packer build al2-docker.pkr.hcl
+
+workflows:
+  packer:
+    jobs:
+      - packer-build
