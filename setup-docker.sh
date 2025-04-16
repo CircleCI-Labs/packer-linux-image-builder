@@ -47,13 +47,19 @@ echo "Installing Docker Compose..."
 sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 sudo chmod +x /usr/local/bin/docker-compose
 
+# Create a symlink to ensure docker-compose is in the PATH
+sudo ln -sf /usr/local/bin/docker-compose /usr/bin/docker-compose
+
 echo "Creating circleci user..."
 sudo useradd -m -s /bin/bash circleci
 echo 'circleci ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/90-circleci
 sudo usermod -aG docker circleci
 
 echo "Verifying installations..."
-sudo docker-compose --version
+# Explicitly check docker-compose in the full path
+echo "Docker Compose version:"
+/usr/local/bin/docker-compose --version
+echo "Git version:"
 git --version
 
 echo "Setup complete!"
