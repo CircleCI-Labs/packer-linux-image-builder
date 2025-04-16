@@ -23,7 +23,7 @@ jobs:
   packer-build:
     docker:
       - image: public.ecr.aws/hashicorp/packer:1.12
-    resource_class: large
+    resource_class: small
     steps:
       - checkout
       - aws-auth-setup
