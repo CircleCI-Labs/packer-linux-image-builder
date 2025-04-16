@@ -27,8 +27,12 @@ jobs:
     steps:
       - checkout
       - aws-auth-setup
-      - run: packer init .
-      - run: packer build al2-docker.pkr.hcl
+      - run: 
+          name: Initialize Packer
+          command: packer init .
+      - run: 
+          name: Build Packer Image
+          command: packer build al2-docker.pkr.hcl
 
 workflows:
   packer:
