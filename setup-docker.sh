@@ -12,61 +12,32 @@ sudo systemctl stop docker || true
 echo "Unmounting Docker volume if mounted..."
 sudo umount /var/lib/docker || true
 
-echo "Creating Docker storage with devicemapper..."
-# Create a data file for Docker
-sudo fallocate -l 20G /docker-data.img
-sudo fallocate -l 2G /docker-metadata.img
+echo "Creating XFS volume for Docker..."
+sudo fallocate -l 20G /docker.img
+sudo mkfs.xfs -n ftype=1 /docker.img
+sudo mkdir -p /var/lib/docker
 
-# Set up loop devices
-sudo losetup -fP /docker-data.img
-sudo losetup -fP /docker-metadata.img
+echo "Mounting Docker volume..."
+# Just use standard mount, let Amazon Linux handle it
+sudo mount /docker.img /var/lib/docker
 
-# Get the loop device names
-DATA_DEV=$(losetup -a | grep docker-data | awk -F: '{print $1}')
-META_DEV=$(losetup -a | grep docker-metadata | awk -F: '{print $1}')
+echo "Verifying mount options:"
+mount | grep docker
 
-echo "Using $DATA_DEV for data and $META_DEV for metadata"
+echo "Updating fstab..."
+sudo sed -i '/\/docker.img/d' /etc/fstab
+echo '/docker.img /var/lib/docker xfs defaults 0 0' | sudo tee -a /etc/fstab
 
-# Configure Docker to use devicemapper
+echo "Configuring Docker..."
 sudo mkdir -p /etc/docker
-cat << EOF | sudo tee /etc/docker/daemon.json
-{
-  "storage-driver": "devicemapper",
-  "storage-opts": [
-    "dm.directlvm_device=$DATA_DEV",
-    "dm.directlvm_device_force=true",
-    "dm.thinp_percent=95",
-    "dm.thinp_metapercent=1",
-    "dm.thinp_autoextend_threshold=80",
-    "dm.thinp_autoextend_percent=20",
-    "dm.directlvm_device_force=true",
-    "dm.basesize=10G"
-  ]
-}
-EOF
+
+# Use a simple config that should work in all cases
+echo '{"storage-driver": "overlay2"}' | sudo tee /etc/docker/daemon.json
 
 echo "Starting Docker service..."
 sudo systemctl daemon-reload
 sudo systemctl enable docker
-sudo systemctl start docker || {
-  echo "Docker failed to start with devicemapper config."
-  sudo systemctl status docker
-  
-  echo "Trying simplified devicemapper config..."
-  cat << EOF | sudo tee /etc/docker/daemon.json
-{
-  "storage-driver": "devicemapper",
-  "storage-opts": [
-    "dm.basesize=10G"
-  ]
-}
-EOF
-  sudo systemctl restart docker || {
-    echo "Docker still failed to start. Falling back to overlay2..."
-    echo '{"storage-driver": "overlay2"}' | sudo tee /etc/docker/daemon.json
-    sudo systemctl restart docker
-  }
-}
+sudo systemctl start docker
 
 echo "Verifying Docker service..."
 sudo systemctl status docker
@@ -76,7 +47,7 @@ sudo usermod -aG docker ec2-user
 
 echo "Checking Docker version and info..."
 sudo docker --version
-sudo docker info | grep -A 10 "Storage Driver"
+sudo docker info
 
 echo "Installing Docker Compose..."
 sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
@@ -92,25 +63,73 @@ sudo usermod -aG docker circleci
 
 echo "Verifying installations..."
 echo "Docker Compose version:"
-/usr/local/bin/docker-compose --version
+sudo /usr/local/bin/docker-compose --version
 echo "Git version:"
 git --version
 
-# Create a startup script that ensures Docker has the right config
-cat << 'EOF' | sudo tee /etc/rc.local
+# Create a script to set up Docker size limits after boot
+cat << 'EOF' | sudo tee /usr/local/bin/configure-docker-size-limits.sh
 #!/bin/bash
-# Ensure Docker has the right storage configuration at boot
-# This handles cases where the Docker service starts before loop devices are available
 
-if grep -q devicemapper /etc/docker/daemon.json; then
-  # Wait a moment for devices to be available
-  sleep 2
+# Wait for Docker to start
+until systemctl is-active docker > /dev/null; do
+  sleep 1
+done
+
+# Get current mount options
+MOUNT_OPTS=$(mount | grep /var/lib/docker | grep -o '(.*)')
+
+if echo "$MOUNT_OPTS" | grep -q "prjquota"; then
+  # Try to configure devicemapper with size limits
+  cat > /tmp/daemon.json << INNER_EOF
+{
+  "storage-driver": "devicemapper",
+  "storage-opts": [
+    "dm.basesize=10G"
+  ]
+}
+INNER_EOF
+
+  # Backup current config
+  cp /etc/docker/daemon.json /etc/docker/daemon.json.bak
   
-  # Restart Docker to ensure it has the right config
+  # Apply new config
+  cp /tmp/daemon.json /etc/docker/daemon.json
+  
+  # Restart Docker
   systemctl restart docker
+  
+  # Check if it worked
+  if ! systemctl is-active docker > /dev/null; then
+    # Restore original config
+    cp /etc/docker/daemon.json.bak /etc/docker/daemon.json
+    systemctl restart docker
+    echo "Could not enable size limits, reverting to standard config"
+  else
+    echo "Docker configured with size limits"
+  fi
 fi
 EOF
 
-sudo chmod +x /etc/rc.local
+sudo chmod +x /usr/local/bin/configure-docker-size-limits.sh
+
+# Create systemd service to run this script at startup
+cat << 'EOF' | sudo tee /etc/systemd/system/docker-size-limits.service
+[Unit]
+Description=Docker Size Limits Configuration
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/configure-docker-size-limits.sh
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Enable the service
+sudo systemctl enable docker-size-limits.service
 
 echo "Setup complete!"
