@@ -43,13 +43,6 @@ build {
       "sudo fallocate -l 20G /docker.img",
       "sudo mkfs.xfs -n ftype=1 /docker.img",
 
-      # Create mount point
-      "sudo mkdir -p /var/lib/docker",
-
-      # Backup original Docker dir if needed
-      "sudo mv /var/lib/docker /var/lib/docker.bak",
-      "sudo mkdir -p /var/lib/docker",
-
       # Mount with pquota
       "echo '/docker.img /var/lib/docker xfs defaults,pquota 0 0' | sudo tee -a /etc/fstab",
       "sudo mount -a",
@@ -58,9 +51,9 @@ build {
       "sudo mkdir -p /etc/docker",
       "echo '{\"storage-driver\": \"overlay2\", \"storage-opts\": [\"size=10G\"]}' | sudo tee /etc/docker/daemon.json",
 
-      # Restore any original contents (optional)
-      "sudo cp -a /var/lib/docker.bak/* /var/lib/docker/ || true",
-      "sudo rm -rf /var/lib/docker.bak",
+       "if [ -d /var/lib/docker ] && [ \"$(ls -A /var/lib/docker)\" ]; then sudo mv /var/lib/docker /var/lib/docker.bak; fi",
+       "sudo mkdir -p /var/lib/docker",
+       "if [ -d /var/lib/docker.bak ]; then sudo cp -a /var/lib/docker.bak/* /var/lib/docker/ || true; sudo rm -rf /var/lib/docker.bak; fi",
 
       # Enable and start Docker
       "sudo systemctl enable docker",
