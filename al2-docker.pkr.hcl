@@ -27,10 +27,7 @@ source "amazon-ebs" "al2" {
   }
 }
 
-build {
-  sources = ["source.amazon-ebs.al2"]
-
-  provisioner "shell" {
+provisioner "shell" {
   inline = [
     # Update and install packages
     "sudo yum update -y",
@@ -43,16 +40,19 @@ build {
     # Force unmount if already mounted
     "sudo umount /var/lib/docker || true",
     
-    # Create XFS volume without quota options initially
+    # Create XFS volume without quota options
     "sudo fallocate -l 20G /docker.img",
     "sudo mkfs.xfs -n ftype=1 /docker.img",
     "sudo mkdir -p /var/lib/docker",
     
-    # Mount without quota options first
+    # Mount without quota options
     "sudo mount /docker.img /var/lib/docker",
+    
+    # Remove any existing fstab entry
+    "sudo sed -i '/\\/docker.img/d' /etc/fstab",
     "echo '/docker.img /var/lib/docker xfs defaults 0 0' | sudo tee -a /etc/fstab",
     
-    # Configure Docker without storage options for now
+    # Configure Docker without storage options
     "sudo mkdir -p /etc/docker",
     "echo '{\"storage-driver\": \"overlay2\"}' | sudo tee /etc/docker/daemon.json",
     
@@ -61,12 +61,15 @@ build {
     "sudo systemctl enable docker",
     "sudo systemctl start docker",
     
-    # Verify Docker is running
+    # Verify Docker is running using sudo
     "sudo systemctl status docker",
-    "docker info",
     
     # Add ec2-user to docker group
     "sudo usermod -aG docker ec2-user",
+    
+    # Run Docker commands with sudo to avoid permission errors during build
+    "sudo docker --version",
+    "sudo docker info",
     
     # Install Docker Compose
     "sudo curl -L \"https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-$(uname -s)-$(uname -m)\" -o /usr/local/bin/docker-compose",
@@ -77,9 +80,8 @@ build {
     "echo 'circleci ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/90-circleci",
     "sudo usermod -aG docker circleci",
     
-    # Verify everything installed
-    "docker --version",
-    "docker-compose version",
+    # Verify docker-compose and git
+    "docker-compose --version || sudo docker-compose --version",
     "git --version"
   ]
 }
