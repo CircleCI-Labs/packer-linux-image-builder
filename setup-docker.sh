@@ -1,14 +1,14 @@
 #!/bin/bash
 set -e
 
-export DEBIAN_FRONTEND=noninteractive
-UNAME="$(uname -r)"
-export UNAME
+sudo export DEBIAN_FRONTEND=noninteractive
+sudo UNAME="$(uname -r)"
+sudo export UNAME
 
 echo "-------------------------------------------"
 echo "     Performing System Updates"
 echo "-------------------------------------------"
-sudo apt-get update && apt-get -y upgrade
+sudo apt-get update && sudo apt-get -y upgrade
 
 echo "--------------------------------------"
 echo "        Installing NTP and Git"
@@ -19,15 +19,14 @@ echo "--------------------------------------"
 echo "        Installing Docker"
 echo "--------------------------------------"
 sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
-sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-sudo apt-get install -y "linux-image-$UNAME"
-sudo apt-get update
-sudo apt-get -y install docker-ce=5:25.0.2-1~ubuntu.20.04~focal \
-                   docker-ce-cli=5:25.0.2-1~ubuntu.20.04~focal
+sudo curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+
+sudo curl -fsSL https://test.docker.com -o test-docker.sh
+sudo sh test-docker.sh
 
 echo "Adding ec2-user to docker group..."
-sudo usermod -aG docker ec2-user
+sudo usermod -aG docker root
 
 echo "Checking Docker version and info..."
 sudo docker --version
