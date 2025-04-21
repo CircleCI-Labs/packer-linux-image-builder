@@ -8,7 +8,7 @@ source "amazon-ebs" "ubuntu" {
   ami_name                = "ubuntu-docker-cci-server-{{timestamp}}"
   source_ami_filter {
     filters = {
-      name                = "*ubuntu-noble-24.04-*"
+      name                = "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
       virtualization-type = "hvm"
       root-device-type    = "ebs"
     }
