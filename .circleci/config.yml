@@ -32,7 +32,7 @@ jobs:
           command: packer init .
       - run: 
           name: Build Packer Image
-          command: packer build al2-docker.pkr.hcl
+          command: packer build ubuntu-docker.pkr.hcl
 
 workflows:
   packer:
