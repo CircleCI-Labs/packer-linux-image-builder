@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
 
-sudo export DEBIAN_FRONTEND=noninteractive
-sudo UNAME="$(uname -r)"
-sudo export UNAME
+export DEBIAN_FRONTEND=noninteractive
+UNAME="$(uname -r)"
+export UNAME
 
 echo "-------------------------------------------"
 echo "     Performing System Updates"
