@@ -6,7 +6,7 @@ orbs:
 parameters:
   role-name:
     type: string
-    default: "arn:aws:iam::992382483259:role/fieldeng_aws_ci_oidc_oauth_role" 
+    default: "arn:aws:iam::992382483259:role/fieldeng_circleci_labs_oidc_oauth_role" 
   aws-default-region:
     type: string
     default: "us-east-1"
