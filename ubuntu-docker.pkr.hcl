@@ -29,5 +29,6 @@ build {
   
   provisioner "shell" {
     script = "setup-docker.sh"
+    execute_command = "sudo -E bash '{{ .Path }}'"
   }
 }
