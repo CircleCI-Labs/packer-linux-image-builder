@@ -28,7 +28,7 @@ jobs:
       - checkout
       - aws-auth-setup
       - run: 
-          name: Initialize Packer
+          name: Initialize Packer in container
           command: packer init .
       - run: 
           name: Build Packer Image
