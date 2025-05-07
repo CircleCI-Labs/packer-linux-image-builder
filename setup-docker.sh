@@ -8,7 +8,8 @@ export UNAME
 echo "-------------------------------------------"
 echo "     Performing System Updates"
 echo "-------------------------------------------"
-sudo apt-get update && sudo apt-get -y upgrade
+sudo apt-get update
+#sudo apt-get update && sudo apt-get -y upgrade
 
 echo "--------------------------------------"
 echo "        Installing NTP and Git"
