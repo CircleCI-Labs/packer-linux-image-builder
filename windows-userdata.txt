@@ -1,0 +1,29 @@
+<powershell>
+# Enable WinRM for Packer
+Write-Host "Configuring WinRM for Packer..."
+
+# Set network profile to Private for all networks
+Get-NetConnectionProfile | Set-NetConnectionProfile -NetworkCategory Private
+
+# Enable WinRM
+Enable-PSRemoting -Force
+
+# Configure WinRM
+winrm quickconfig -q
+winrm set winrm/config/service '@{AllowUnencrypted="true"}'
+winrm set winrm/config/service/auth '@{Basic="true"}'
+winrm set winrm/config '@{MaxTimeoutms="1800000"}'
+
+# Create self-signed certificate for HTTPS
+$Cert = New-SelfSignedCertificate -DnsName "packer" -CertStoreLocation Cert:\LocalMachine\My
+New-Item -Path WSMan:\LocalHost\Listener -Transport HTTPS -Address * -CertificateThumbPrint $Cert.Thumbprint -Force
+
+# Configure firewall
+netsh advfirewall firewall add rule name="WinRM-HTTP" dir=in localport=5985 protocol=TCP action=allow
+netsh advfirewall firewall add rule name="WinRM-HTTPS" dir=in localport=5986 protocol=TCP action=allow
+
+# Restart WinRM service
+Restart-Service winrm
+
+Write-Host "WinRM configuration complete!"
+</powershell>
