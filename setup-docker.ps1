@@ -1,10 +1,8 @@
 # Setup Docker for Windows
+# Installs: Git, Docker Desktop, docker-compose
+# Creates: circleci user with admin and docker-users group membership
 # Requires: Windows Server 2019/2022 or Windows 10/11 Pro/Enterprise
 $ErrorActionPreference = "Stop"
-
-Write-Host "-------------------------------------------" -ForegroundColor Cyan
-Write-Host "     Performing System Updates" -ForegroundColor Cyan
-Write-Host "-------------------------------------------" -ForegroundColor Cyan
 
 # Install Chocolatey if not already installed
 if (!(Get-Command choco -ErrorAction SilentlyContinue)) {
@@ -20,14 +18,8 @@ Write-Host "        Installing Git" -ForegroundColor Cyan
 Write-Host "--------------------------------------" -ForegroundColor Cyan
 choco install git -y
 
-Write-Host "--------------------------------------" -ForegroundColor Cyan
-Write-Host "        Configuring Windows Time (NTP)" -ForegroundColor Cyan
-Write-Host "--------------------------------------" -ForegroundColor Cyan
-# Configure Windows Time service (equivalent to NTP)
-Set-Service w32time -StartupType Automatic
-Start-Service w32time
-w32tm /config /manualpeerlist:"time.windows.com,0x8" /syncfromflags:manual /reliable:yes /update
-w32tm /resync
+# Refresh environment variables after Git installation
+$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
 Write-Host "--------------------------------------" -ForegroundColor Cyan
 Write-Host "        Installing Docker" -ForegroundColor Cyan
@@ -43,14 +35,13 @@ choco install docker-desktop -y
 Write-Host "Adding current user to docker-users group..." -ForegroundColor Yellow
 Add-LocalGroupMember -Group "docker-users" -Member $env:USERNAME -ErrorAction SilentlyContinue
 
-Write-Host "Checking Docker version and info..." -ForegroundColor Yellow
-docker --version
-docker info
-
 Write-Host "Installing Docker Compose..." -ForegroundColor Cyan
 # Docker Desktop includes Docker Compose, but we'll ensure it's available
 # Compose v2 is included with Docker Desktop, but we can also install standalone
 choco install docker-compose -y
+
+# Refresh environment variables
+$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
 Write-Host "Creating circleci user..." -ForegroundColor Cyan
 $Password = ConvertTo-SecureString "TempPassword123!" -AsPlainText -Force
@@ -67,13 +58,8 @@ Add-LocalGroupMember -Group "Administrators" -Member "circleci" -ErrorAction Sil
 # Add circleci to docker-users group
 Add-LocalGroupMember -Group "docker-users" -Member "circleci" -ErrorAction SilentlyContinue
 
-Write-Host "Verifying installations..." -ForegroundColor Cyan
-Write-Host "Docker Compose version:" -ForegroundColor Yellow
-docker-compose --version
-Write-Host "Git version:" -ForegroundColor Yellow
-git --version
-
 Write-Host ""
 Write-Host "Setup complete!" -ForegroundColor Green
-Write-Host "NOTE: A system restart may be required for Docker to function properly." -ForegroundColor Yellow
+Write-Host "NOTE: Docker installation requires a system restart to function properly." -ForegroundColor Yellow
+Write-Host "Docker and docker-compose commands will be available after restart." -ForegroundColor Yellow
 Write-Host "You may need to set a permanent password for the 'circleci' user." -ForegroundColor Yellow

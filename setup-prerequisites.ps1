@@ -12,16 +12,6 @@ Import-Module PSWindowsUpdate
 Get-WindowsUpdate -AcceptAll -Install -AutoReboot:$false
 
 Write-Host "--------------------------------------" -ForegroundColor Cyan
-Write-Host "        Configuring Windows Time (NTP)" -ForegroundColor Cyan
-Write-Host "--------------------------------------" -ForegroundColor Cyan
-
-# Configure Windows Time service (equivalent to NTP)
-Set-Service w32time -StartupType Automatic
-Start-Service w32time
-w32tm /config /manualpeerlist:"time.windows.com,0x8" /syncfromflags:manual /reliable:yes /update
-w32tm /resync
-
-Write-Host "--------------------------------------" -ForegroundColor Cyan
 Write-Host "        Installing Git" -ForegroundColor Cyan
 Write-Host "--------------------------------------" -ForegroundColor Cyan
 

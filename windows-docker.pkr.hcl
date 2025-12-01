@@ -84,18 +84,28 @@ build {
     script = "setup-docker.ps1"
   }
 
-  # Optional: Run Windows Updates and restart if needed
+  # Restart Windows for Docker to complete installation
   provisioner "windows-restart" {
     restart_check_command = "powershell -command \"& {Write-Output 'restarted.'}\""
+  }
+
+  # Wait for Docker services to initialize
+  provisioner "powershell" {
+    inline = [
+      "Write-Host 'Waiting for Docker services to initialize...'",
+      "Start-Sleep -Seconds 60"
+    ]
   }
 
   # Verify installation
   provisioner "powershell" {
     inline = [
       "Write-Host 'Verifying Docker installation...'",
+      "$env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')",
       "docker --version",
       "docker-compose --version",
-      "git --version"
+      "git --version",
+      "Write-Host 'All installations verified successfully!' -ForegroundColor Green"
     ]
   }
 }
