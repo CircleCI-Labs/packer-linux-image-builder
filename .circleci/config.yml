@@ -33,6 +33,7 @@ jobs:
       - run: 
           name: Build Packer Image
           command: packer build windows-docker.pkr.hcl
+          no_output_timeout: 4h
 
 workflows:
   packer:

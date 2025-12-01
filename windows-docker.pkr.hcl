@@ -26,7 +26,7 @@ variable "windows_ami_owner" {
 }
 
 variable "windows_volume_size" {
-  default = 50
+  default = 160
   type    = number
 }
 
@@ -84,28 +84,34 @@ build {
     script = "setup-docker.ps1"
   }
 
-  # Restart Windows for Docker to complete installation
-  provisioner "windows-restart" {
-    restart_check_command = "powershell -command \"& {Write-Output 'restarted.'}\""
+  # Install and configure SSH
+  provisioner "powershell" {
+    script = "install-ssh.ps1"
   }
 
-  # Wait for Docker services to initialize
-  provisioner "powershell" {
-    inline = [
-      "Write-Host 'Waiting for Docker services to initialize...'",
-      "Start-Sleep -Seconds 60"
-    ]
-  }
+  # Optional: Restart and verify Docker (adds ~5 minutes to build time)
+  # Uncomment the sections below if you want to verify Docker works during AMI creation
+  # Docker will be fully functional when instances launch from this AMI regardless
 
-  # Verify installation
-  provisioner "powershell" {
-    inline = [
-      "Write-Host 'Verifying Docker installation...'",
-      "$env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')",
-      "docker --version",
-      "docker-compose --version",
-      "git --version",
-      "Write-Host 'All installations verified successfully!' -ForegroundColor Green"
-    ]
-  }
+  # provisioner "windows-restart" {
+  #   restart_check_command = "powershell -command \"& {Write-Output 'restarted.'}\""
+  # }
+
+  # provisioner "powershell" {
+  #   inline = [
+  #     "Write-Host 'Waiting for Docker services to initialize...'",
+  #     "Start-Sleep -Seconds 60"
+  #   ]
+  # }
+
+  # provisioner "powershell" {
+  #   inline = [
+  #     "Write-Host 'Verifying Docker installation...'",
+  #     "$env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')",
+  #     "docker --version",
+  #     "docker-compose --version",
+  #     "git --version",
+  #     "Write-Host 'All installations verified successfully!' -ForegroundColor Green"
+  #   ]
+  # }
 }
