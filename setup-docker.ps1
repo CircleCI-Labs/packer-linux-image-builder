@@ -4,6 +4,11 @@
 # Requires: Windows Server 2019/2022 or Windows 10/11 Pro/Enterprise
 $ErrorActionPreference = "Stop"
 
+Write-Host "Creating required directories..." -ForegroundColor Cyan
+New-Item -Path "C:\CircleCI\Temp" -ItemType Directory -Force | Out-Null
+New-Item -Path "C:\Temp" -ItemType Directory -Force | Out-Null
+Write-Host "Directories created: C:\CircleCI\Temp and C:\Temp" -ForegroundColor Green
+
 # Install Chocolatey if not already installed
 if (!(Get-Command choco -ErrorAction SilentlyContinue)) {
     Write-Host "Installing Chocolatey package manager..."
