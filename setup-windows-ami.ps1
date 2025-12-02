@@ -191,28 +191,66 @@ Write-Host "--------------------------------------" -ForegroundColor Cyan
 Write-Host "        Installing Docker CE" -ForegroundColor Cyan
 Write-Host "--------------------------------------" -ForegroundColor Cyan
 
-# Pre-install Containers feature to avoid Docker script triggering restart
+# Enable Containers feature (required for Docker)
 Write-Host "Checking Windows Containers feature..."
 $containersFeature = Get-WindowsOptionalFeature -Online -FeatureName Containers -ErrorAction SilentlyContinue
 if ($null -eq $containersFeature -or $containersFeature.State -ne 'Enabled') {
-    Write-Host "Enabling Windows Containers feature (required for Docker)..."
+    Write-Host "Enabling Windows Containers feature..."
     Enable-WindowsOptionalFeature -Online -FeatureName Containers -All -NoRestart -ErrorAction Stop
     Write-Host "Containers feature enabled (will be active after restart)" -ForegroundColor Green
 } else {
     Write-Host "Containers feature already enabled" -ForegroundColor Green
 }
 
-# Install Docker CE using Microsoft's official script (won't restart since Containers already enabled)
-Write-Host "Downloading Docker CE installer..."
-Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/microsoft/Windows-Containers/Main/helpful_tools/Install-DockerCE/install-docker-ce.ps1" -OutFile "$env:TEMP\install-docker-ce.ps1"
+# Install Docker CE manually for full control
+Write-Host "Downloading Docker CE..."
+$dockerVersion = "27.3.1"
+$dockerUrl = "https://download.docker.com/win/static/stable/x86_64/docker-$dockerVersion.zip"
+$dockerZip = "$env:TEMP\docker.zip"
+$dockerPath = "$env:ProgramFiles\Docker"
 
-Write-Host "Installing Docker CE..."
-& "$env:TEMP\install-docker-ce.ps1"
+Invoke-WebRequest -Uri $dockerUrl -OutFile $dockerZip -UseBasicParsing
+Write-Host "Docker downloaded"
 
-# Clean up installer
-Remove-Item "$env:TEMP\install-docker-ce.ps1" -Force -ErrorAction SilentlyContinue
+# Extract Docker
+Write-Host "Extracting Docker to $dockerPath..."
+if (Test-Path $dockerPath) {
+    Remove-Item -Path $dockerPath -Recurse -Force
+}
+Expand-Archive -Path $dockerZip -DestinationPath $env:ProgramFiles -Force
+Remove-Item $dockerZip -Force
 
-Write-Host "Docker CE installation complete" -ForegroundColor Green
+# Add Docker to system PATH
+Write-Host "Adding Docker to system PATH..."
+$dockerBinPath = "$dockerPath"
+$currentPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+if ($currentPath -notlike "*$dockerBinPath*") {
+    [Environment]::SetEnvironmentVariable("Path", "$currentPath;$dockerBinPath", "Machine")
+    $env:Path += ";$dockerBinPath"
+}
+Write-Host "Docker added to PATH" -ForegroundColor Green
+
+# Register Docker as a Windows service
+Write-Host "Registering Docker service..."
+& "$dockerPath\dockerd.exe" --register-service
+Write-Host "Docker service registered" -ForegroundColor Green
+
+# Configure Docker daemon
+Write-Host "Configuring Docker daemon..."
+$dockerConfigPath = "C:\ProgramData\docker\config"
+if (!(Test-Path $dockerConfigPath)) {
+    New-Item -Path $dockerConfigPath -ItemType Directory -Force | Out-Null
+}
+
+$daemonConfig = @{
+    "experimental" = $false
+    "hosts" = @("npipe://")
+} | ConvertTo-Json
+
+Set-Content -Path "$dockerConfigPath\daemon.json" -Value $daemonConfig -Force
+Write-Host "Docker daemon configured" -ForegroundColor Green
+
+Write-Host "Docker CE installation complete (will start after restart)" -ForegroundColor Green
 
 Write-Host "Installing Docker Compose..." -ForegroundColor Cyan
 choco install docker-compose -y

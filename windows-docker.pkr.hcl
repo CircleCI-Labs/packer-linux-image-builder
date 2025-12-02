@@ -131,13 +131,18 @@ build {
     script = "test-startup-script.ps1"
   }
 
-  # Verify Docker is actually working
+  # Start Docker service and verify installation
   provisioner "powershell" {
     inline = [
+      "Write-Host 'Starting Docker service...'",
+      "Start-Service docker",
+      "Start-Sleep -Seconds 10",
+      "",
       "Write-Host 'Verifying Docker installation...'",
       "$env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')",
       "docker --version",
       "docker-compose --version",
+      "docker info",
       "git --version",
       "Write-Host 'All installations verified successfully!' -ForegroundColor Green"
     ]

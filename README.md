@@ -4,11 +4,11 @@ A streamlined Packer template that builds a Windows Server 2022 AMI with Docker 
 
 ## What's Included
 
-**Software (versions from `windows2022/software.yml`):**
+**Software:**
 - .NET Framework 4.8 (includes System.Web assembly)
 - Git 2.46.2
 - Git-LFS 3.5.1
-- Docker CE (Community Edition)
+- Docker CE 27.3.1 (manually installed for reliability)
 - docker-compose
 - 7zip 24.8.0
 - gzip 1.3.12

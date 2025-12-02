@@ -199,14 +199,39 @@ Test-Feature "Git Installation" {
 # Test 13: Docker installed
 Test-Feature "Docker Installation" {
     try {
+        # Check if Docker is in PATH
         $docker = Get-Command docker -ErrorAction SilentlyContinue
+
         if ($null -ne $docker) {
+            Write-Host "  Docker found in PATH: $($docker.Source)" -ForegroundColor Green
+
+            # Check if Docker service exists
+            $dockerService = Get-Service docker -ErrorAction SilentlyContinue
+            if ($null -ne $dockerService) {
+                Write-Host "  Docker service status: $($dockerService.Status)" -ForegroundColor Cyan
+                # If service is running, try docker version
+                if ($dockerService.Status -eq 'Running') {
+                    try {
+                        $dockerVersion = docker --version 2>&1
+                        Write-Host "  Docker version: $dockerVersion" -ForegroundColor Green
+                    } catch {
+                        Write-Host "  Docker service running but command failed (may need initialization)" -ForegroundColor Yellow
+                    }
+                }
+            }
             return $true
         } else {
-            Write-Host "  Note: Docker may be available after restart" -ForegroundColor Yellow
+            Write-Host "  Docker not in PATH yet (will be available after restart)" -ForegroundColor Yellow
+
+            # Check if Docker binaries exist on disk
+            $dockerPath = "C:\Program Files\Docker\docker.exe"
+            if (Test-Path $dockerPath) {
+                Write-Host "  Docker binaries found at: $dockerPath" -ForegroundColor Cyan
+            }
             return $true  # Pass because Docker needs restart
         }
     } catch {
+        Write-Host "  Docker check encountered error: $($_.Exception.Message)" -ForegroundColor Yellow
         return $true  # Pass because Docker needs restart
     }
 }
