@@ -89,12 +89,12 @@ build {
     script = "install-ssh.ps1"
   }
 
-  # Test AMI readiness for CircleCI agent
+  # Test AMI readiness for CircleCI agent (before restart)
   provisioner "powershell" {
     script = "test-ami-readiness.ps1"
   }
 
-  # Test startup script operations (critical - mimics actual user-data script)
+  # Test startup script operations (before restart)
   provisioner "powershell" {
     script = "test-startup-script.ps1"
   }

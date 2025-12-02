@@ -191,7 +191,18 @@ Write-Host "--------------------------------------" -ForegroundColor Cyan
 Write-Host "        Installing Docker CE" -ForegroundColor Cyan
 Write-Host "--------------------------------------" -ForegroundColor Cyan
 
-# Install Docker CE using Microsoft's official script (matches working repo)
+# Pre-install Containers feature to avoid Docker script triggering restart
+Write-Host "Checking Windows Containers feature..."
+$containersFeature = Get-WindowsOptionalFeature -Online -FeatureName Containers -ErrorAction SilentlyContinue
+if ($null -eq $containersFeature -or $containersFeature.State -ne 'Enabled') {
+    Write-Host "Enabling Windows Containers feature (required for Docker)..."
+    Enable-WindowsOptionalFeature -Online -FeatureName Containers -All -NoRestart -ErrorAction Stop
+    Write-Host "Containers feature enabled (will be active after restart)" -ForegroundColor Green
+} else {
+    Write-Host "Containers feature already enabled" -ForegroundColor Green
+}
+
+# Install Docker CE using Microsoft's official script (won't restart since Containers already enabled)
 Write-Host "Downloading Docker CE installer..."
 Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/microsoft/Windows-Containers/Main/helpful_tools/Install-DockerCE/install-docker-ce.ps1" -OutFile "$env:TEMP\install-docker-ce.ps1"
 

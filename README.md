@@ -78,9 +78,10 @@ The build includes comprehensive automated testing in two phases:
 **Phase 1: Pre-Restart Tests**
 - Tests run immediately after software installation
 - Validates basic dependencies are installed correctly
+- Catches configuration issues early
 
 **Phase 2: Post-Restart Tests (Production State)**
-- System restarts to enable Docker and apply all changes
+- System restarts to enable Docker and apply all system changes
 - Both tests re-run to validate the production state
 - Verifies Docker, TLS 1.2, and all services work after restart
 - Ensures the AMI matches the environment your user-data script will run in
@@ -89,7 +90,7 @@ The build includes comprehensive automated testing in two phases:
 
 During build, you'll see real-time output and logs are saved to `C:\CircleCI\startup-test.log`.
 
-**Note:** The restart adds ~5-7 minutes to build time but ensures reliability.
+**Build time:** ~25-30 minutes (includes thorough pre/post-restart testing)
 
 ### Debug Startup Script Issues
 
