@@ -89,6 +89,11 @@ build {
     script = "install-ssh.ps1"
   }
 
+  # Test AMI readiness for CircleCI agent
+  provisioner "powershell" {
+    script = "test-ami-readiness.ps1"
+  }
+
   # Optional: Restart and verify Docker (adds ~5 minutes to build time)
   # Uncomment the sections below if you want to verify Docker works during AMI creation
   # Docker will be fully functional when instances launch from this AMI regardless

@@ -23,7 +23,6 @@ A streamlined Packer template that builds a Windows Server 2022 AMI with Docker 
 **Users:**
 - `circleci` (Administrator)
 - `circleci-admin` (Administrator)
-- Password: `gFo8.UbL-@Ln*q-m` (change for production)
 
 **Directories:**
 - `C:\CircleCI\Temp`
@@ -47,8 +46,26 @@ packer build windows-docker.pkr.hcl
 - `windows-docker.pkr.hcl` - Main Packer configuration
 - `setup-windows-ami.ps1` - Installs all required software (Docker CE, Git, tools) and creates users
 - `install-ssh.ps1` - Configures OpenSSH Server
+- `test-ami-readiness.ps1` - Validates AMI readiness for CircleCI agent startup script
 - `windows-userdata.txt` - WinRM setup for Packer
 - `plugins.pkr.hcl` - Packer plugin requirements
+
+## Testing
+
+The build includes an automated readiness test (`test-ami-readiness.ps1`) that validates:
+- .NET Framework System.Web assembly
+- TLS 1.2 configuration
+- PowerShell execution policy
+- User accounts and permissions
+- Required directories
+- Git and Unix tools
+- Registry and scheduled task capabilities
+
+To manually test an existing AMI:
+```powershell
+# Connect to the instance and run:
+.\test-ami-readiness.ps1
+```
 
 ## Configuration
 

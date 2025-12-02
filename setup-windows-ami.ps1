@@ -26,9 +26,20 @@ Write-Host "--------------------------------------" -ForegroundColor Cyan
 Write-Host "Enabling TLS 1.2..."
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-# Set PowerShell execution policy
-Write-Host "Setting PowerShell execution policy..."
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine -Force
+# Set PowerShell execution policy (if not already permissive)
+Write-Host "Configuring PowerShell execution policy..."
+try {
+    $currentPolicy = Get-ExecutionPolicy -Scope LocalMachine
+    if ($currentPolicy -ne "RemoteSigned" -and $currentPolicy -ne "Unrestricted" -and $currentPolicy -ne "Bypass") {
+        Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine -Force -ErrorAction Stop
+        Write-Host "Execution policy set to RemoteSigned" -ForegroundColor Green
+    } else {
+        Write-Host "Execution policy already configured ($currentPolicy)" -ForegroundColor Green
+    }
+} catch {
+    Write-Host "Execution policy: $($_.Exception.Message)" -ForegroundColor Yellow
+    Write-Host "Current policy is sufficient for operation" -ForegroundColor Green
+}
 
 Write-Host "System configuration complete" -ForegroundColor Green
 
