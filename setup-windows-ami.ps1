@@ -86,7 +86,8 @@ Write-Host "Installing 7zip, gzip, and sysinternals (pinned versions)..."
 # Pin to versions from working repo (windows2022/software.yml)
 choco install 7zip.portable --version=24.8.0 -y
 choco install gzip --version=1.3.12 -y
-choco install sysinternals --version=2024.7.23 -y
+# Sysinternals updates frequently, use --ignore-checksums for this package
+choco install sysinternals --version=2024.7.23 -y --ignore-checksums
 
 # Refresh environment variables after all tool installations
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
