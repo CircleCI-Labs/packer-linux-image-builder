@@ -46,13 +46,18 @@ packer build windows-docker.pkr.hcl
 - `windows-docker.pkr.hcl` - Main Packer configuration
 - `setup-windows-ami.ps1` - Installs all required software (Docker CE, Git, tools) and creates users
 - `install-ssh.ps1` - Configures OpenSSH Server
-- `test-ami-readiness.ps1` - Validates AMI readiness for CircleCI agent startup script
+- `test-ami-readiness.ps1` - Validates AMI readiness (runs during build, also copied to C:\)
+- `test-startup-script.ps1` - Debug tool for troubleshooting startup script failures (copied to C:\)
 - `windows-userdata.txt` - WinRM setup for Packer
 - `plugins.pkr.hcl` - Packer plugin requirements
 
 ## Testing
 
-The build includes an automated readiness test (`test-ami-readiness.ps1`) that validates:
+### During Build
+
+The build includes two automated tests that run BEFORE the AMI is created:
+
+**1. `test-ami-readiness.ps1`** - Validates dependencies:
 - .NET Framework System.Web assembly
 - TLS 1.2 configuration
 - PowerShell execution policy
@@ -61,10 +66,38 @@ The build includes an automated readiness test (`test-ami-readiness.ps1`) that v
 - Git and Unix tools
 - Registry and scheduled task capabilities
 
-To manually test an existing AMI:
+**2. `test-startup-script.ps1`** - Simulates your actual user-data script:
+- System.Web password generation
+- User password changes
+- Registry operations (UAC, CredentialsDelegation)
+- Group Policy updates
+- HTTPS downloads from S3
+- Scheduled task creation
+- Credential Manager operations
+
+**If either test fails, the AMI build fails** - ensuring the AMI is fully working before creation.
+
+During build, you'll see real-time output and logs are saved to `C:\CircleCI\startup-test.log`.
+
+### Debug Startup Script Issues
+
+If your user-data startup script is failing, use `test-startup-script.ps1` to debug:
+
+1. Launch an instance from the AMI
+2. Connect via RDP
+3. Run the test script:
 ```powershell
-# Connect to the instance and run:
-.\test-ami-readiness.ps1
+C:\test-startup-script.ps1
+```
+
+This will:
+- Simulate all operations from the CircleCI agent startup script
+- Log detailed output to `C:\CircleCI\startup-test.log`
+- Show exactly which step is failing and why
+
+Check the log file:
+```powershell
+Get-Content C:\CircleCI\startup-test.log
 ```
 
 ## Configuration

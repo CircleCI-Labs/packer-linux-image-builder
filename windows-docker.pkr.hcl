@@ -94,6 +94,20 @@ build {
     script = "test-ami-readiness.ps1"
   }
 
+  # Test startup script operations (critical - mimics actual user-data script)
+  provisioner "powershell" {
+    script = "test-startup-script.ps1"
+  }
+
+  # Copy debug scripts to instance for troubleshooting
+  provisioner "file" {
+    sources = [
+      "test-ami-readiness.ps1",
+      "test-startup-script.ps1"
+    ]
+    destination = "C:\\"
+  }
+
   # Optional: Restart and verify Docker (adds ~5 minutes to build time)
   # Uncomment the sections below if you want to verify Docker works during AMI creation
   # Docker will be fully functional when instances launch from this AMI regardless

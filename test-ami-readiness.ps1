@@ -16,16 +16,16 @@ function Test-Feature {
     try {
         $result = & $Test
         if ($result) {
-            Write-Host "  ✓ PASS" -ForegroundColor Green
+            Write-Host "  [PASS]" -ForegroundColor Green
             $script:testsPassed++
             return $true
         } else {
-            Write-Host "  ✗ FAIL" -ForegroundColor Red
+            Write-Host "  [FAIL]" -ForegroundColor Red
             $script:testsFailed++
             return $false
         }
     } catch {
-        Write-Host "  ✗ FAIL: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "  [FAIL] $($_.Exception.Message)" -ForegroundColor Red
         $script:testsFailed++
         return $false
     }
@@ -201,9 +201,9 @@ Write-Host "  Failed: $testsFailed" -ForegroundColor Red
 Write-Host "==========================================" -ForegroundColor Cyan
 
 if ($testsFailed -eq 0) {
-    Write-Host "`n✓ AMI is ready for CircleCI agent startup script!" -ForegroundColor Green
+    Write-Host "`n[SUCCESS] AMI is ready for CircleCI agent startup script!" -ForegroundColor Green
     exit 0
 } else {
-    Write-Host "`n✗ AMI is NOT ready. Fix the failed tests above." -ForegroundColor Red
+    Write-Host "`n[ERROR] AMI is NOT ready. Fix the failed tests above." -ForegroundColor Red
     exit 1
 }
