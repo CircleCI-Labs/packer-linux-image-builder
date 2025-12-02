@@ -53,48 +53,51 @@ if (!(Test-Path $sshConfigPath)) {
 
 $sshdConfig = @"
 # This is the sshd server system-wide configuration file.
+# Config matches windows2022/provision-scripts/install-ssh-2022.ps1
 
-Port 22
 ListenAddress 0.0.0.0
+Port 22
 
-# Logging
-SyslogFacility LOCAL0
-LogLevel INFO
+Protocol 2 # disable legacy support for security reasons
+StrictModes no # make sure sshd checks file modes and ownership before accepting logins
+UsePrivilegeSeparation sandbox
+Compression no
+UseDNS no
 
-# Authentication
+# TCP keep alive messages are spoofable, use client keep alive instead
+TCPKeepAlive no
+ClientAliveInterval 300
+ClientAliveCountMax 3
+
+AuthorizedKeysFile C:/Users/%u/.ssh/authorized_keys
 PubkeyAuthentication yes
+PermitRootLogin no
 PasswordAuthentication no
 PermitEmptyPasswords no
 ChallengeResponseAuthentication no
 
-# Security
-PermitRootLogin no
-StrictModes yes
-MaxAuthTries 6
-MaxSessions 10
-
-# Key exchange and ciphers
 Ciphers aes256-gcm@openssh.com,aes256-ctr,chacha20-poly1305@openssh.com
 KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256
 MACs hmac-sha2-256,hmac-sha2-512
 
-# Disable host-based authentication
+# never use host-based auth
 IgnoreRhosts yes
+IgnoreUserKnownHosts yes
 HostbasedAuthentication no
+RhostsRSAAuthentication no
 
-# Miscellaneous
 X11Forwarding no
-PrintMotd yes
-TCPKeepAlive no
-ClientAliveInterval 300
-ClientAliveCountMax 3
-UseDNS no
+X11UseLocalhost yes
+PermitUserEnvironment yes
+AcceptEnv LANG LC_*
 
-# Authorized keys
-AuthorizedKeysFile .ssh/authorized_keys
+# Enable debug logging
+# Prior to launching, let's enable debug logging for SSH.
+# To view SSH logs, run this on the machine from a terminal:
+# Get-Content -Path C:\ProgramData\ssh\Logs\sshd.log -Wait -Tail 0
+SyslogFacility LOCAL0
+LogLevel DEBUG3
 
-# Override default of no subsystems
-Subsystem sftp sftp-server.exe
 "@
 
 Set-Content "$sshConfigPath\sshd_config" $sshdConfig -Force

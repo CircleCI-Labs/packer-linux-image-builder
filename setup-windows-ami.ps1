@@ -1,9 +1,15 @@
-# Setup Docker for Windows
-# Installs: Git, Docker Desktop 4.36.x (Engine 28.x), docker-compose, 7zip, gzip, sysinternals
-# Creates: circleci and circleci-admin users with admin and docker-users group membership
-# Password: TempPassword123! (should be changed)
-# Directories: C:\CircleCI\Temp, C:\Temp
-# Requires: Windows Server 2019/2022 or Windows 10/11 Pro/Enterprise
+# Setup Windows AMI for CircleCI Build Agent
+#
+# This script configures a complete CircleCI build agent environment including:
+#   - Git 2.46.2, Git-LFS 3.5.1
+#   - Docker CE, docker-compose
+#   - 7zip 24.8.0, gzip 1.3.12, sysinternals 2024.7.23
+#   - circleci and circleci-admin users (Administrators)
+#   - Required directories: C:\CircleCI\Temp, C:\Temp
+#
+# Password: gFo8.UbL-@Ln*q-m (matches working repo)
+# Requires: Windows Server 2019/2022
+# Versions match windows2022/software.yml
 $ErrorActionPreference = "Stop"
 
 Write-Host "Creating required directories..." -ForegroundColor Cyan
@@ -21,9 +27,11 @@ if (!(Get-Command choco -ErrorAction SilentlyContinue)) {
 }
 
 Write-Host "--------------------------------------" -ForegroundColor Cyan
-Write-Host "        Installing Git" -ForegroundColor Cyan
+Write-Host "        Installing Git & Git-LFS" -ForegroundColor Cyan
 Write-Host "--------------------------------------" -ForegroundColor Cyan
-choco install git -y
+# Pin to versions from working repo (windows2022/software.yml)
+choco install git --version=2.46.2 -y
+choco install git-lfs --version=3.5.1 -y
 
 # Add Git Unix tools to PATH (for xargs, etc.)
 Write-Host "Adding Git Unix tools to system PATH..."
@@ -41,40 +49,39 @@ if (Test-Path $gitUnixToolsPath) {
 Write-Host "--------------------------------------" -ForegroundColor Cyan
 Write-Host "        Installing Additional Tools" -ForegroundColor Cyan
 Write-Host "--------------------------------------" -ForegroundColor Cyan
-Write-Host "Installing 7zip, gzip, and sysinternals..."
-choco install 7zip -y
-choco install gzip -y
-choco install sysinternals -y
+Write-Host "Installing 7zip, gzip, and sysinternals (pinned versions)..."
+# Pin to versions from working repo (windows2022/software.yml)
+choco install 7zip.portable --version=24.8.0 -y
+choco install gzip --version=1.3.12 -y
+choco install sysinternals --version=2024.7.23 -y
 
 # Refresh environment variables after all tool installations
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
 Write-Host "--------------------------------------" -ForegroundColor Cyan
-Write-Host "        Installing Docker (Engine 28.x)" -ForegroundColor Cyan
+Write-Host "        Installing Docker CE" -ForegroundColor Cyan
 Write-Host "--------------------------------------" -ForegroundColor Cyan
 
-# Install Docker Desktop 4.36.x which includes Docker Engine 28.x
-# Note: Docker Desktop 4.37+ includes Engine 29.x, so we pin to 4.36.x
-Write-Host "Installing Docker Desktop 4.36.x (includes Docker Engine 28.x)..."
-choco install docker-desktop --version=4.36.0 -y --allow-downgrade
+# Install Docker CE using Microsoft's official script (matches working repo)
+Write-Host "Downloading Docker CE installer..."
+Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/microsoft/Windows-Containers/Main/helpful_tools/Install-DockerCE/install-docker-ce.ps1" -OutFile "$env:TEMP\install-docker-ce.ps1"
 
-# Alternative: Install Docker Engine directly (for Windows Server)
-# Install-Module -Name DockerMsftProvider -Repository PSGallery -Force
-# Install-Package -Name docker -ProviderName DockerMsftProvider -Force
+Write-Host "Installing Docker CE..."
+& "$env:TEMP\install-docker-ce.ps1"
 
-Write-Host "Adding current user to docker-users group..." -ForegroundColor Yellow
-Add-LocalGroupMember -Group "docker-users" -Member $env:USERNAME -ErrorAction SilentlyContinue
+# Clean up installer
+Remove-Item "$env:TEMP\install-docker-ce.ps1" -Force -ErrorAction SilentlyContinue
+
+Write-Host "Docker CE installation complete" -ForegroundColor Green
 
 Write-Host "Installing Docker Compose..." -ForegroundColor Cyan
-# Docker Desktop includes Docker Compose, but we'll ensure it's available
-# Compose v2 is included with Docker Desktop, but we can also install standalone
 choco install docker-compose -y
 
 # Refresh environment variables
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
 Write-Host "Creating circleci and circleci-admin users..." -ForegroundColor Cyan
-$Password = ConvertTo-SecureString "TempPassword123!" -AsPlainText -Force
+$Password = ConvertTo-SecureString "gFo8.UbL-@Ln*q-m" -AsPlainText -Force
 
 # Create circleci user
 try {
@@ -96,25 +103,17 @@ try {
 Add-LocalGroupMember -Group "Administrators" -Member "circleci" -ErrorAction SilentlyContinue
 Write-Host "Added 'circleci' to Administrators group"
 
-# Add circleci to docker-users group
-Add-LocalGroupMember -Group "docker-users" -Member "circleci" -ErrorAction SilentlyContinue
-Write-Host "Added 'circleci' to docker-users group"
-
 # Add circleci-admin to Administrators group
 Add-LocalGroupMember -Group "Administrators" -Member "circleci-admin" -ErrorAction SilentlyContinue
 Write-Host "Added 'circleci-admin' to Administrators group"
 
-# Add circleci-admin to docker-users group
-Add-LocalGroupMember -Group "docker-users" -Member "circleci-admin" -ErrorAction SilentlyContinue
-Write-Host "Added 'circleci-admin' to docker-users group"
-
 Write-Host ""
 Write-Host "Setup complete!" -ForegroundColor Green
-Write-Host "NOTE: Docker installation requires a system restart to function properly." -ForegroundColor Yellow
-Write-Host "Docker Engine 28.x and docker-compose commands will be available after restart." -ForegroundColor Yellow
+Write-Host "NOTE: Docker CE installation requires a system restart to function properly." -ForegroundColor Yellow
+Write-Host "Docker CE and docker-compose commands will be available after restart." -ForegroundColor Yellow
 Write-Host "" -ForegroundColor Yellow
 Write-Host "Users created:" -ForegroundColor Yellow
-Write-Host "  - circleci (Password: TempPassword123!)" -ForegroundColor Yellow
-Write-Host "  - circleci-admin (Password: TempPassword123!)" -ForegroundColor Yellow
-Write-Host "Both users have Administrator and docker-users permissions." -ForegroundColor Yellow
+Write-Host "  - circleci (Password: gFo8.UbL-@Ln*q-m)" -ForegroundColor Yellow
+Write-Host "  - circleci-admin (Password: gFo8.UbL-@Ln*q-m)" -ForegroundColor Yellow
+Write-Host "Both users have Administrator permissions." -ForegroundColor Yellow
 Write-Host "IMPORTANT: Change these passwords for production use!" -ForegroundColor Red

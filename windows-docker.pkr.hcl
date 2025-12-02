@@ -79,9 +79,9 @@ build {
     ]
   }
 
-  # Run setup-docker.ps1
+  # Run setup-windows-ami.ps1
   provisioner "powershell" {
-    script = "setup-docker.ps1"
+    script = "setup-windows-ami.ps1"
   }
 
   # Install and configure SSH

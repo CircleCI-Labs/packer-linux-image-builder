@@ -1,0 +1,26 @@
+# Claude Code configuration
+.claude/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Packer
+*.box
+packer_cache/
+crash.log
+*.pkrvars.hcl
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.local
