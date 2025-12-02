@@ -1,6 +1,7 @@
 # Setup Windows AMI for CircleCI Build Agent
 #
 # This script configures a complete CircleCI build agent environment including:
+#   - System: TLS 1.2, PowerShell execution policy, .NET Framework 4.8
 #   - Git 2.46.2, Git-LFS 3.5.1
 #   - Docker CE, docker-compose
 #   - 7zip 24.8.0, gzip 1.3.12, sysinternals 2024.7.23
@@ -17,6 +18,20 @@ New-Item -Path "C:\CircleCI\Temp" -ItemType Directory -Force | Out-Null
 New-Item -Path "C:\Temp" -ItemType Directory -Force | Out-Null
 Write-Host "Directories created: C:\CircleCI\Temp and C:\Temp" -ForegroundColor Green
 
+Write-Host "--------------------------------------" -ForegroundColor Cyan
+Write-Host "        Configuring System Settings" -ForegroundColor Cyan
+Write-Host "--------------------------------------" -ForegroundColor Cyan
+
+# Enable TLS 1.2 for secure downloads
+Write-Host "Enabling TLS 1.2..."
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+# Set PowerShell execution policy
+Write-Host "Setting PowerShell execution policy..."
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine -Force
+
+Write-Host "System configuration complete" -ForegroundColor Green
+
 # Install Chocolatey if not already installed
 if (!(Get-Command choco -ErrorAction SilentlyContinue)) {
     Write-Host "Installing Chocolatey package manager..."
@@ -25,6 +40,13 @@ if (!(Get-Command choco -ErrorAction SilentlyContinue)) {
     Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
     refreshenv
 }
+
+Write-Host "--------------------------------------" -ForegroundColor Cyan
+Write-Host "        Installing .NET Framework" -ForegroundColor Cyan
+Write-Host "--------------------------------------" -ForegroundColor Cyan
+# Install .NET Framework 4.8 (includes System.Web assembly required by CircleCI agent)
+choco install dotnet-4.8 -y
+Write-Host ".NET Framework 4.8 installed" -ForegroundColor Green
 
 Write-Host "--------------------------------------" -ForegroundColor Cyan
 Write-Host "        Installing Git & Git-LFS" -ForegroundColor Cyan

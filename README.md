@@ -5,6 +5,7 @@ A streamlined Packer template that builds a Windows Server 2022 AMI with Docker 
 ## What's Included
 
 **Software (versions from `windows2022/software.yml`):**
+- .NET Framework 4.8 (includes System.Web assembly)
 - Git 2.46.2
 - Git-LFS 3.5.1
 - Docker CE (Community Edition)
@@ -13,6 +14,11 @@ A streamlined Packer template that builds a Windows Server 2022 AMI with Docker 
 - gzip 1.3.12
 - Sysinternals 2024.7.23
 - OpenSSH Server (configured for key-based auth only)
+
+**System Configuration:**
+- TLS 1.2 enabled for secure downloads
+- PowerShell execution policy: RemoteSigned
+- Git Unix tools in PATH (xargs, grep, etc.)
 
 **Users:**
 - `circleci` (Administrator)
