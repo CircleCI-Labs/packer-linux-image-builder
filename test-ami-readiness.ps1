@@ -158,7 +158,30 @@ Test-Feature "Required Directories" {
     }
 }
 
-# Test 10: Registry write capability
+# Test 10: Windows Firewall is disabled
+Test-Feature "Windows Firewall Disabled" {
+    try {
+        $domainProfile = Get-NetFirewallProfile -Profile Domain
+        $publicProfile = Get-NetFirewallProfile -Profile Public
+        $privateProfile = Get-NetFirewallProfile -Profile Private
+
+        $allDisabled = ($domainProfile.Enabled -eq $false -and
+                       $publicProfile.Enabled -eq $false -and
+                       $privateProfile.Enabled -eq $false)
+
+        if ($allDisabled) {
+            Write-Host "  All firewall profiles disabled" -ForegroundColor Green
+        } else {
+            Write-Host "  WARNING: Some firewall profiles still enabled" -ForegroundColor Yellow
+        }
+
+        return $allDisabled
+    } catch {
+        return $false
+    }
+}
+
+# Test 11: Registry write capability
 Test-Feature "Registry Write Access" {
     try {
         $testPath = "HKLM:\SOFTWARE\CircleCITest"
@@ -172,7 +195,7 @@ Test-Feature "Registry Write Access" {
     }
 }
 
-# Test 11: Scheduled Task creation
+# Test 12: Scheduled Task creation
 Test-Feature "Scheduled Task Creation" {
     try {
         $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-Command Write-Host 'Test'"
@@ -186,7 +209,7 @@ Test-Feature "Scheduled Task Creation" {
     }
 }
 
-# Test 12: Git installed and in PATH
+# Test 13: Git installed and in PATH
 Test-Feature "Git Installation" {
     try {
         $git = Get-Command git -ErrorAction Stop
@@ -196,7 +219,7 @@ Test-Feature "Git Installation" {
     }
 }
 
-# Test 13: Docker installed
+# Test 14: Docker installed
 Test-Feature "Docker Installation" {
     try {
         # Check if Docker is in PATH
@@ -236,7 +259,7 @@ Test-Feature "Docker Installation" {
     }
 }
 
-# Test 14: Unix tools in PATH (xargs)
+# Test 15: Unix tools in PATH (xargs)
 Test-Feature "Git Unix Tools (xargs)" {
     try {
         $xargs = Get-Command xargs -ErrorAction Stop

@@ -22,6 +22,11 @@ Write-Host "--------------------------------------" -ForegroundColor Cyan
 Write-Host "        Configuring System Settings" -ForegroundColor Cyan
 Write-Host "--------------------------------------" -ForegroundColor Cyan
 
+# Disable Windows Firewall for all profiles
+Write-Host "Disabling Windows Firewall..."
+Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False
+Write-Host "Windows Firewall disabled for all profiles" -ForegroundColor Green
+
 # Enable TLS 1.2 for secure downloads (current session + system-wide)
 Write-Host "Enabling TLS 1.2..."
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12

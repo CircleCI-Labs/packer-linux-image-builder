@@ -16,6 +16,7 @@ A streamlined Packer template that builds a Windows Server 2022 AMI with Docker 
 - OpenSSH Server (configured for key-based auth only)
 
 **System Configuration:**
+- Windows Firewall disabled (all profiles)
 - TLS 1.2 enabled for secure downloads
 - PowerShell execution policy: RemoteSigned
 - Git Unix tools in PATH (xargs, grep, etc.)
@@ -57,10 +58,11 @@ packer build windows-docker.pkr.hcl
 
 The build includes comprehensive automated testing in two phases:
 
-**1. `test-ami-readiness.ps1`** - Validates dependencies:
+**1. `test-ami-readiness.ps1`** - Validates 15 dependencies:
 - .NET Framework System.Web assembly
 - TLS 1.2 configuration
 - PowerShell execution policy
+- Windows Firewall disabled
 - User accounts and permissions
 - Required directories
 - Git and Unix tools
