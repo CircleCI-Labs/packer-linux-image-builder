@@ -203,7 +203,43 @@ Test-Step "Write Token File" {
     }
 }
 
-# Test 13: Register scheduled task WITHOUT password (like CircleCI Agent task)
+# Test 13: Download CircleCI Agent from S3 (simulated - tests HTTPS S3 download capability)
+Test-Step "Download from S3 (CircleCI Agent Download Simulation)" {
+    Write-Log "Testing S3 HTTPS download capability..."
+
+    # Test download from circleci-binary-releases S3 bucket (using a small public file)
+    # Note: Actual agent URL format is https://circleci-binary-releases.s3.amazonaws.com/circleci-machine-agent/windows/amd64/VERSION/machine-agent.exe
+    # For testing, we'll verify we can download from the S3 bucket
+
+    $testDownloadUrl = "https://circleci-binary-releases.s3.amazonaws.com/circleci-launch-agent/changelog.txt"
+    $testDownloadPath = "$env:TEMP\circleci-test-download.txt"
+
+    try {
+        Write-Log "Testing download from CircleCI S3 bucket: $testDownloadUrl"
+        Invoke-WebRequest -Uri $testDownloadUrl -OutFile $testDownloadPath -UseBasicParsing -TimeoutSec 60
+
+        if (Test-Path $testDownloadPath) {
+            $fileSize = (Get-Item $testDownloadPath).Length
+            Write-Log "Download successful. File size: $fileSize bytes"
+
+            # Test Get-FileHash capability (used for checksum verification in user-data)
+            $hash = Get-FileHash -Algorithm SHA256 $testDownloadPath
+            Write-Log "File SHA256: $($hash.Hash)"
+
+            # Cleanup
+            Remove-Item $testDownloadPath -Force -ErrorAction SilentlyContinue
+            Write-Log "S3 download test successful"
+        } else {
+            Write-Log "Download file not found after download attempt"
+            throw "Download verification failed"
+        }
+    } catch {
+        Write-Log "S3 download test failed: $($_.Exception.Message)"
+        throw
+    }
+}
+
+# Test 14: Register scheduled task WITHOUT password (like CircleCI Agent task)
 Test-Step "Register Scheduled Task WITHOUT Password Parameter" {
     Write-Log "Creating scheduled task settings (Hidden, Vista compatibility)..."
     $taskSettings = New-ScheduledTaskSettingsSet -Hidden -Compatibility Vista -AllowStartIfOnBatteries -ExecutionTimeLimit (New-TimeSpan)
@@ -229,7 +265,7 @@ Test-Step "Register Scheduled Task WITHOUT Password Parameter" {
     Unregister-ScheduledTask -TaskName "CircleCI Test Agent" -Confirm:$false
 }
 
-# Test 14: Register scheduled task WITH password (like RDP task)
+# Test 15: Register scheduled task WITH password (like RDP task)
 Test-Step "Register Scheduled Task WITH Password Parameter" {
     Write-Log "Creating scheduled task settings (Vista compatibility)..."
     $rdpTaskSettings = New-ScheduledTaskSettingsSet -Compatibility Vista -AllowStartIfOnBatteries -ExecutionTimeLimit (New-TimeSpan)
@@ -245,7 +281,7 @@ Test-Step "Register Scheduled Task WITH Password Parameter" {
     Write-Log "Task object returned: $($rdpTask.TaskName)"
 }
 
-# Test 15: Start scheduled task
+# Test 16: Start scheduled task
 Test-Step "Start Scheduled Task Immediately" {
     Write-Log "Starting RDP task..."
     $rdpTask = Get-ScheduledTask -TaskName "CircleCI Test RDP"
@@ -263,7 +299,7 @@ Test-Step "Start Scheduled Task Immediately" {
     Unregister-ScheduledTask -TaskName "CircleCI Test RDP" -Confirm:$false
 }
 
-# Test 16: cmdkey operation (credential manager)
+# Test 17: cmdkey operation (credential manager)
 Test-Step "Credential Manager (cmdkey) Operations" {
     Write-Log "Testing cmdkey.exe /add operation..."
     $cmdkeyResult = cmdkey.exe /add:TERMSRV/localhost /user:$global:testUsername /pass:$global:testPasswd 2>&1
@@ -277,7 +313,7 @@ Test-Step "Credential Manager (cmdkey) Operations" {
     cmdkey.exe /delete:TERMSRV/localhost 2>&1 | Out-Null
 }
 
-# Test 17: reg.exe operations (HKCU)
+# Test 18: reg.exe operations (HKCU)
 Test-Step "Registry Operations via reg.exe (HKCU)" {
     Write-Log "Testing reg.exe ADD for HKCU..."
 

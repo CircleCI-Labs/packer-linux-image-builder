@@ -59,9 +59,38 @@ Test-Feature "System.Web.Security.Membership Password Generation" {
 # Test 3: TLS 1.2 for HTTPS downloads
 Test-Feature "TLS 1.2 Configuration" {
     try {
+        # Check current session
         $protocols = [Net.ServicePointManager]::SecurityProtocol
-        $hasTls12 = ($protocols -band [Net.SecurityProtocolType]::Tls12) -eq [Net.SecurityProtocolType]::Tls12
-        return $hasTls12
+        $sessionHasTls12 = ($protocols -band [Net.SecurityProtocolType]::Tls12) -eq [Net.SecurityProtocolType]::Tls12
+
+        # Check registry keys (system-wide configuration)
+        $regPath1 = "HKLM:\SOFTWARE\Microsoft\.NETFramework\v4.0.30319"
+        $regPath2 = "HKLM:\SOFTWARE\Wow6432Node\Microsoft\.NETFramework\v4.0.30319"
+
+        $reg1Strong = $false
+        $reg2Strong = $false
+
+        if (Test-Path $regPath1) {
+            $schUse = Get-ItemProperty -Path $regPath1 -Name "SchUseStrongCrypto" -ErrorAction SilentlyContinue
+            $reg1Strong = ($null -ne $schUse -and $schUse.SchUseStrongCrypto -eq 1)
+        }
+
+        if (Test-Path $regPath2) {
+            $schUse = Get-ItemProperty -Path $regPath2 -Name "SchUseStrongCrypto" -ErrorAction SilentlyContinue
+            $reg2Strong = ($null -ne $schUse -and $schUse.SchUseStrongCrypto -eq 1)
+        }
+
+        $registryConfigured = ($reg1Strong -and $reg2Strong)
+
+        # Pass if EITHER current session has TLS 1.2 OR registry is configured
+        if ($sessionHasTls12 -or $registryConfigured) {
+            if ($registryConfigured) {
+                Write-Host "  Registry keys configured (will be active after restart)" -ForegroundColor Yellow
+            }
+            return $true
+        } else {
+            return $false
+        }
     } catch {
         return $false
     }
