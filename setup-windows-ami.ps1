@@ -22,9 +22,24 @@ Write-Host "--------------------------------------" -ForegroundColor Cyan
 Write-Host "        Configuring System Settings" -ForegroundColor Cyan
 Write-Host "--------------------------------------" -ForegroundColor Cyan
 
-# Enable TLS 1.2 for secure downloads
+# Enable TLS 1.2 for secure downloads (current session + system-wide)
 Write-Host "Enabling TLS 1.2..."
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+# Enable TLS 1.2 system-wide via registry for .NET applications
+Write-Host "Configuring TLS 1.2 system-wide via registry..."
+$tls12RegPaths = @(
+    "HKLM:\SOFTWARE\Microsoft\.NETFramework\v4.0.30319",
+    "HKLM:\SOFTWARE\Wow6432Node\Microsoft\.NETFramework\v4.0.30319"
+)
+foreach ($path in $tls12RegPaths) {
+    if (!(Test-Path $path)) {
+        New-Item -Path $path -Force | Out-Null
+    }
+    Set-ItemProperty -Path $path -Name "SchUseStrongCrypto" -Value 1 -Type DWord -Force
+    Set-ItemProperty -Path $path -Name "SystemDefaultTlsVersions" -Value 1 -Type DWord -Force
+}
+Write-Host "TLS 1.2 enabled system-wide" -ForegroundColor Green
 
 # Set PowerShell execution policy (if not already permissive)
 Write-Host "Configuring PowerShell execution policy..."
@@ -42,6 +57,86 @@ try {
 }
 
 Write-Host "System configuration complete" -ForegroundColor Green
+
+Write-Host "--------------------------------------" -ForegroundColor Cyan
+Write-Host "        Creating CircleCI Users" -ForegroundColor Cyan
+Write-Host "--------------------------------------" -ForegroundColor Cyan
+$Password = ConvertTo-SecureString "gFo8.UbL-@Ln*q-m" -AsPlainText -Force
+
+# Create circleci user
+Write-Host "Creating 'circleci' user..."
+try {
+    $existingUser = Get-LocalUser -Name "circleci" -ErrorAction SilentlyContinue
+    if ($existingUser) {
+        Write-Host "User 'circleci' already exists, updating password..." -ForegroundColor Yellow
+        Set-LocalUser -Name "circleci" -Password $Password
+    } else {
+        New-LocalUser -Name "circleci" -Password $Password -FullName "CircleCI User" -Description "CircleCI Build User" -PasswordNeverExpires:$true -ErrorAction Stop
+        Write-Host "User 'circleci' created successfully" -ForegroundColor Green
+    }
+} catch {
+    Write-Host "CRITICAL ERROR creating circleci user: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Exception details: $($_.Exception)" -ForegroundColor Red
+    throw
+}
+
+# Create circleci-admin user
+Write-Host "Creating 'circleci-admin' user..."
+try {
+    $existingAdmin = Get-LocalUser -Name "circleci-admin" -ErrorAction SilentlyContinue
+    if ($existingAdmin) {
+        Write-Host "User 'circleci-admin' already exists, updating password..." -ForegroundColor Yellow
+        Set-LocalUser -Name "circleci-admin" -Password $Password
+    } else {
+        New-LocalUser -Name "circleci-admin" -Password $Password -FullName "CircleCI Admin User" -Description "CircleCI Admin Build User" -PasswordNeverExpires:$true -ErrorAction Stop
+        Write-Host "User 'circleci-admin' created successfully" -ForegroundColor Green
+    }
+} catch {
+    Write-Host "CRITICAL ERROR creating circleci-admin user: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Exception details: $($_.Exception)" -ForegroundColor Red
+    throw
+}
+
+# Add circleci to Administrators group
+Write-Host "Adding 'circleci' to Administrators group..."
+try {
+    Add-LocalGroupMember -Group "Administrators" -Member "circleci" -ErrorAction Stop
+    Write-Host "Added 'circleci' to Administrators group" -ForegroundColor Green
+} catch {
+    if ($_.Exception.Message -like "*already a member*") {
+        Write-Host "'circleci' already in Administrators group" -ForegroundColor Yellow
+    } else {
+        Write-Host "ERROR adding circleci to Administrators: $($_.Exception.Message)" -ForegroundColor Red
+        throw
+    }
+}
+
+# Add circleci-admin to Administrators group
+Write-Host "Adding 'circleci-admin' to Administrators group..."
+try {
+    Add-LocalGroupMember -Group "Administrators" -Member "circleci-admin" -ErrorAction Stop
+    Write-Host "Added 'circleci-admin' to Administrators group" -ForegroundColor Green
+} catch {
+    if ($_.Exception.Message -like "*already a member*") {
+        Write-Host "'circleci-admin' already in Administrators group" -ForegroundColor Yellow
+    } else {
+        Write-Host "ERROR adding circleci-admin to Administrators: $($_.Exception.Message)" -ForegroundColor Red
+        throw
+    }
+}
+
+# Verify users were created successfully
+Write-Host "Verifying user creation..."
+$circleciUser = Get-LocalUser -Name "circleci" -ErrorAction SilentlyContinue
+$circleciAdminUser = Get-LocalUser -Name "circleci-admin" -ErrorAction SilentlyContinue
+if ($circleciUser -and $circleciAdminUser) {
+    Write-Host "Both users verified successfully" -ForegroundColor Green
+} else {
+    Write-Host "CRITICAL ERROR: User verification failed!" -ForegroundColor Red
+    throw "Failed to create required users"
+}
+
+Write-Host "User creation complete" -ForegroundColor Green
 
 # Install Chocolatey if not already installed
 if (!(Get-Command choco -ErrorAction SilentlyContinue)) {
@@ -114,40 +209,23 @@ choco install docker-compose -y
 # Refresh environment variables
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
-Write-Host "Creating circleci and circleci-admin users..." -ForegroundColor Cyan
-$Password = ConvertTo-SecureString "gFo8.UbL-@Ln*q-m" -AsPlainText -Force
-
-# Create circleci user
-try {
-    New-LocalUser -Name "circleci" -Password $Password -FullName "CircleCI User" -Description "CircleCI Build User" -PasswordNeverExpires:$true -ErrorAction Stop
-    Write-Host "User 'circleci' created successfully"
-} catch {
-    Write-Host "User 'circleci' may already exist: $_" -ForegroundColor Yellow
-}
-
-# Create circleci-admin user
-try {
-    New-LocalUser -Name "circleci-admin" -Password $Password -FullName "CircleCI Admin User" -Description "CircleCI Admin Build User" -PasswordNeverExpires:$true -ErrorAction Stop
-    Write-Host "User 'circleci-admin' created successfully"
-} catch {
-    Write-Host "User 'circleci-admin' may already exist: $_" -ForegroundColor Yellow
-}
-
-# Add circleci to Administrators group (equivalent to sudo ALL)
-Add-LocalGroupMember -Group "Administrators" -Member "circleci" -ErrorAction SilentlyContinue
-Write-Host "Added 'circleci' to Administrators group"
-
-# Add circleci-admin to Administrators group
-Add-LocalGroupMember -Group "Administrators" -Member "circleci-admin" -ErrorAction SilentlyContinue
-Write-Host "Added 'circleci-admin' to Administrators group"
-
 Write-Host ""
-Write-Host "Setup complete!" -ForegroundColor Green
-Write-Host "NOTE: Docker CE installation requires a system restart to function properly." -ForegroundColor Yellow
-Write-Host "Docker CE and docker-compose commands will be available after restart." -ForegroundColor Yellow
-Write-Host "" -ForegroundColor Yellow
-Write-Host "Users created:" -ForegroundColor Yellow
-Write-Host "  - circleci (Password: gFo8.UbL-@Ln*q-m)" -ForegroundColor Yellow
-Write-Host "  - circleci-admin (Password: gFo8.UbL-@Ln*q-m)" -ForegroundColor Yellow
-Write-Host "Both users have Administrator permissions." -ForegroundColor Yellow
-Write-Host "IMPORTANT: Change these passwords for production use!" -ForegroundColor Red
+Write-Host "======================================" -ForegroundColor Green
+Write-Host "    Setup Complete!" -ForegroundColor Green
+Write-Host "======================================" -ForegroundColor Green
+Write-Host ""
+Write-Host "Installed Software:" -ForegroundColor Cyan
+Write-Host "  - .NET Framework 4.8" -ForegroundColor White
+Write-Host "  - Git 2.46.2 (with Unix tools)" -ForegroundColor White
+Write-Host "  - Git-LFS 3.5.1" -ForegroundColor White
+Write-Host "  - Docker CE + docker-compose" -ForegroundColor White
+Write-Host "  - 7zip 24.8.0, gzip 1.3.12, sysinternals 2024.7.23" -ForegroundColor White
+Write-Host "  - OpenSSH Server" -ForegroundColor White
+Write-Host ""
+Write-Host "Users Created:" -ForegroundColor Cyan
+Write-Host "  - circleci (Administrator)" -ForegroundColor White
+Write-Host "  - circleci-admin (Administrator)" -ForegroundColor White
+Write-Host "  Password: gFo8.UbL-@Ln*q-m" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "NOTE: Docker requires restart to function. It will be available when instances launch from this AMI." -ForegroundColor Yellow
+Write-Host "IMPORTANT: Change passwords for production use!" -ForegroundColor Red

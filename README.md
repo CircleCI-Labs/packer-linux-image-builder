@@ -55,7 +55,7 @@ packer build windows-docker.pkr.hcl
 
 ### During Build
 
-The build includes two automated tests that run BEFORE the AMI is created:
+The build includes comprehensive automated testing in two phases:
 
 **1. `test-ami-readiness.ps1`** - Validates dependencies:
 - .NET Framework System.Web assembly
@@ -75,9 +75,21 @@ The build includes two automated tests that run BEFORE the AMI is created:
 - Scheduled task creation
 - Credential Manager operations
 
-**If either test fails, the AMI build fails** - ensuring the AMI is fully working before creation.
+**Phase 1: Pre-Restart Tests**
+- Tests run immediately after software installation
+- Validates basic dependencies are installed correctly
+
+**Phase 2: Post-Restart Tests (Production State)**
+- System restarts to enable Docker and apply all changes
+- Both tests re-run to validate the production state
+- Verifies Docker, TLS 1.2, and all services work after restart
+- Ensures the AMI matches the environment your user-data script will run in
+
+**If any test fails in either phase, the AMI build fails** - ensuring the AMI is fully working before creation.
 
 During build, you'll see real-time output and logs are saved to `C:\CircleCI\startup-test.log`.
+
+**Note:** The restart adds ~5-7 minutes to build time but ensures reliability.
 
 ### Debug Startup Script Issues
 

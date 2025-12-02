@@ -108,29 +108,38 @@ build {
     destination = "C:\\"
   }
 
-  # Optional: Restart and verify Docker (adds ~5 minutes to build time)
-  # Uncomment the sections below if you want to verify Docker works during AMI creation
-  # Docker will be fully functional when instances launch from this AMI regardless
+  # Restart Windows to enable Docker and apply all system changes
+  provisioner "windows-restart" {
+    restart_check_command = "powershell -command \"& {Write-Output 'restarted.'}\""
+  }
 
-  # provisioner "windows-restart" {
-  #   restart_check_command = "powershell -command \"& {Write-Output 'restarted.'}\""
-  # }
+  # Wait for system to stabilize after restart
+  provisioner "powershell" {
+    inline = [
+      "Write-Host 'System restarted successfully. Waiting for services to initialize...'",
+      "Start-Sleep -Seconds 60"
+    ]
+  }
 
-  # provisioner "powershell" {
-  #   inline = [
-  #     "Write-Host 'Waiting for Docker services to initialize...'",
-  #     "Start-Sleep -Seconds 60"
-  #   ]
-  # }
+  # Re-run AMI readiness tests after restart (validates TLS 1.2, Docker, etc. in production state)
+  provisioner "powershell" {
+    script = "test-ami-readiness.ps1"
+  }
 
-  # provisioner "powershell" {
-  #   inline = [
-  #     "Write-Host 'Verifying Docker installation...'",
-  #     "$env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')",
-  #     "docker --version",
-  #     "docker-compose --version",
-  #     "git --version",
-  #     "Write-Host 'All installations verified successfully!' -ForegroundColor Green"
-  #   ]
-  # }
+  # Re-run startup script tests after restart (validates all user-data operations work)
+  provisioner "powershell" {
+    script = "test-startup-script.ps1"
+  }
+
+  # Verify Docker is actually working
+  provisioner "powershell" {
+    inline = [
+      "Write-Host 'Verifying Docker installation...'",
+      "$env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')",
+      "docker --version",
+      "docker-compose --version",
+      "git --version",
+      "Write-Host 'All installations verified successfully!' -ForegroundColor Green"
+    ]
+  }
 }
